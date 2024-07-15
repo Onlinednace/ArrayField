@@ -1,0 +1,98 @@
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+
+local aimbotEnabled = false -- Default to aimbot off
+
+-- UI Components
+local function createUI()
+    local ScreenGui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+    local Frame = Instance.new("Frame")
+    Frame.Parent = ScreenGui
+    Frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Matte Black
+    Frame.Position = UDim2.new(0.1, 0, 0.1, 0)
+    Frame.Size = UDim2.new(0.3, 0, 0.1, 0)
+
+    local UICorner1 = Instance.new("UICorner")
+    UICorner1.CornerRadius = UDim.new(0.1, 0)
+    UICorner1.Parent = Frame
+
+    local TextButton = Instance.new("TextButton")
+    TextButton.Parent = Frame
+    TextButton.BackgroundColor3 = Color3.fromRGB(0, 0, 0) -- Matte Black
+    TextButton.Size = UDim2.new(1, 0, 1, 0)
+    TextButton.Font = Enum.Font.SourceSans
+    TextButton.Text = "Toggle Aimbot"
+    TextButton.TextColor3 = Color3.fromRGB(255, 255, 255) -- White Text
+    TextButton.TextScaled = true
+
+    local UICorner2 = Instance.new("UICorner")
+    UICorner2.CornerRadius = UDim.new(0.1, 0)
+    UICorner2.Parent = TextButton
+
+    TextButton.MouseButton1Click:Connect(function()
+        aimbotEnabled = not aimbotEnabled
+        if aimbotEnabled then
+            TextButton.Text = "Aimbot: ON"
+        else
+            TextButton.Text = "Aimbot: OFF"
+        end
+    end)
+
+    -- Create the aim indicator
+    local AimCircle = Instance.new("TextLabel")
+    AimCircle.Parent = ScreenGui
+    AimCircle.Size = UDim2.new(0, 20, 0, 20)
+    AimCircle.Position = UDim2.new(0.5, -10, 0.5, -30) -- Moved a bit higher
+    AimCircle.BackgroundTransparency = 1
+    AimCircle.Text = "○"
+    AimCircle.TextColor3 = Color3.fromRGB(255, 255, 255) -- White Circle
+    AimCircle.TextScaled = true
+
+    local UICorner3 = Instance.new("UICorner")
+UICorner3.CornerRadius = UDim.new(1, 0)
+    UICorner3.Parent = AimCircle
+end
+
+-- Visibility Check
+local function isVisible(target)
+    local ray = Ray.new(Camera.CFrame.Position, (target.Position - Camera.CFrame.Position).unit * 1000)
+    local part, position = workspace:FindPartOnRayWithIgnoreList(ray, {LocalPlayer.Character})
+    return part and part:IsDescendantOf(target.Parent)
+end
+
+-- Health-Based Targeting
+local function getClosestEnemy()
+    local closestPlayer = nil
+    local lowestHealth = math.huge
+
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.TeamColor ~= LocalPlayer.TeamColor and player.Character and player.Character:FindFirstChild("Head") and player.Character:FindFirstChild("Humanoid") then
+            local health = player.Character.Humanoid.Health
+            if isVisible(player.Character.Head) and health < lowestHealth then
+                closestPlayer = player
+                lowestHealth = health
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+-- Main Aimbot Functionality
+RunService.RenderStepped:Connect(function()
+    if aimbotEnabled then
+        local closestPlayer = getClosestEnemy()
+        if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("Head") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(LocalPlayer.Character.HumanoidRootPart.Position, closestPlayer.Character.Head.Position)
+
+            -- Move the camera smoothly
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, closestPlayer.Character.Head.Position)
+        end
+    end
+end)
+
+createUI()
